@@ -1,9 +1,11 @@
 import os
 import pandas as pd
 import subprocess as proc
-
+from dotenv import load_dotenv
+load_dotenv()
 
 CONFIGS = {}
+
 # Salesforce
 def addSalesforce():
     CONFIGS['GRAX_SFDC_USERNAME']=''
@@ -14,15 +16,17 @@ def addSalesforce():
 # Storage
 ## S3
 def addS3():
-    CONFIGS['S3ACCESSKEYID']=''
-    CONFIGS['S3BUCKET']=''
-    CONFIGS['S3REGION']=''
-    CONFIGS['S3SECRETACCESSKEY']=''
+    CONFIGS['S3ACCESSKEYID']=os.getenv("S3ACCESSKEYID")
+    CONFIGS['S3BUCKET']=os.getenv("S3BUCKET")
+    CONFIGS['S3REGION']=os.getenv("S3REGION")
+    CONFIGS['S3SECRETACCESSKEY']=os.getenv("S3SECRETACCESSKEY")
+    CONFIGS['S3ASSUMEROLEARN']=os.getenv("S3ASSUMEROLEARN")
+    CONFIGS['S3ASSUMEROLEENABLED']=os.getenv("S3ASSUMEROLEENABLED")
 ## Azure
 def addAzure():
     CONFIGS['AZURE_STORAGE_ACCOUNT_NAME']=''
     CONFIGS['AZURE_ACCOUNT_ACCESS_KEY']=''
-    CONFIGS['AZURE_CONTAINER_NAME=']=''
+    CONFIGS['AZURE_CONTAINER_NAME']=''
     CONFIGS['GRAX_STORAGE_PROVIDER_NAME']=''
 
 ## Google
@@ -58,7 +62,42 @@ def setDefaultConfigs(app_name):
     addSalesforce()
     log('default configs added')
 
-def setConfigs(app_name, storage='S3'):
+def add_defaults_to_remove():
+    CONFIGS['APP_NAME']=''
+    CONFIGS['BONSAI_URL']=''
+    CONFIGS['DEBUGGING']=''
+    CONFIGS['ENGAGEMENTGRAPH_ADMINPWD']=''
+    CONFIGS['ENGAGEMENTGRAPH_ADMINUSER']=''
+    CONFIGS['ENGAGEMENTGRAPH_APIURL']=''
+    CONFIGS['ENGAGEMENTGRAPH_APIVERSION']=''
+    CONFIGS['ENGAGEMENTGRAPH_URL']=''
+    CONFIGS['GIT_USER_ID']=''
+    CONFIGS['GRAX_ASYNCH_TIMER']=''
+    CONFIGS['GRAX_AUDITTRAIL_OFF']=''
+    CONFIGS['GRAX_ENV']=''
+    CONFIGS['GRAX_ENV_ASYNC_ATTACHMENT_PROCESSOR_ORGANIZATION_IDS']=''
+    CONFIGS['GRAX_ENV_ASYNC_BULK_LOAD_ORGANIZATION_IDS']=''
+    CONFIGS['GRAX_ENV_ASYNC_INTERVAL_MINUTES']=''
+    CONFIGS['GRAX_ENV_METADATA_BACKUP_ORGANIZATION_IDS']=''
+    CONFIGS['GRAX_ENV_ODATA_ORGANIZATION_IDS']=''
+    CONFIGS['GRAX_ENV_SYNC_SALESFORCE_SOURCE_ORGANIZATION_IDS']=''
+    CONFIGS['GRAX_ESMAXBULK']=''
+    CONFIGS['GRAX_FORCE_ENV_CONFIG']=''
+    CONFIGS['GRAX_MAX_RESTORE']=''
+    CONFIGS['GRAX_OBJECT_TYPES_TO_RESTORE']=''
+    CONFIGS['GRAX_S3_OFF']=''
+    CONFIGS['GRAX_SFDC_PASSWORD']=''
+    CONFIGS['GRAX_SFDC_TOKEN']=''
+    CONFIGS['GRAX_SFDC_URL']=''
+    CONFIGS['GRAX_SFDC_USERNAME']=''
+    CONFIGS['GRAX_SYNCHID']=''
+    CONFIGS['RETRIEVE_SALESFORCE_METADATA']=''
+    CONFIGS['S3ACCESSKEYID']=''
+    CONFIGS['S3BUCKET']=''
+    CONFIGS['S3REGION']=''
+    CONFIGS['S3SECRETACCESSKEY']=''
+
+def set_configs(app_name, storage='S3'):
     output = ''
     setDefaultConfigs(app_name)
     if storage == 'S3':
@@ -77,22 +116,34 @@ def setConfigs(app_name, storage='S3'):
     run(f'heroku config:set -a {app_name} {output}')
     log(f'configs set for app {app_name}')
 
+def unset_configs(app_name):
+    setDefaultConfigs(app_name)
+    addS3()
+    addAzure()
+    addGoogle()
+    add_defaults_to_remove()
+    config_vars = ' '.join(list(CONFIGS.keys()))
+    run_command = run(f'heroku config:unset -a {app_name} {config_vars}')
+    with open('unset-command.txt', mode='w') as file:
+        file.write(run_command)
+    log(f'configs unset for app {app_name}')
+        
 addons = ['engagementgrapgh:hpt-test', 'scheduler:standard']
-def installAddOns(app_name):
+def install_addons(app_name):
     for addon in addons:
         run(f'heroku addons:create {addon} -a {app_name} --json')
     log('addons added to app')
 
-def createApp(app_name, region, space, team, storage):
+def create_app(app_name, region, space, team, storage):
     create = run('heroku create {app_name} --remote=https://github.com/HardingPoint/grax-secure.git --region={region} --space={space} --team={team} --json')
-    installAddOns(app_name)
-    setConfigs(app_name, storage)
+    install_addons(app_name)
+    set_configs(app_name, storage)
 
-def updateApp(app_name):
+def update_app(app_name):
     run(f'heroku git:remote -a {app_name}')
     run('git push heroku master')
 
-def listApps(team=None):
+def list_apps(team=None):
     function = 'heroku apps'
     if team:
         function += ' --team ' + team
@@ -102,7 +153,7 @@ def listApps(team=None):
     apps = result.split('\n')
     return [i for i in apps if i] # removes empty strings from cli response
 
-def scaleDynos(app_name, dyno_type, amount=1):
+def scale_dynos(app_name, dyno_type, amount=1):
     run(f'heroku ps:scale {dyno_type}={amount} -a {app_name}')
 
 def run(function):
@@ -117,11 +168,11 @@ def run(function):
         except FileNotFoundError as e:
             print(e)
 
-def updateAppsRemotely(team=None):
-    apps = listApps(team)
+def remote_update(team=None):
+    apps = list_apps(team)
     for app in apps:
         log(f'updating {app}')
-        updateApp(app)
+        update_app(app)
         print(f'{app} update complete')
     print('All apps have been updated')
 
@@ -133,13 +184,19 @@ def log(message):
 # In the terminal run heroku login -i, then enter your username and password
 DEBUG = True
 TRACE = 'FINE'
-if __name__ == '__main__':
-    source = pd.read_csv('heroku_settings.csv', na_filter=False)
-    apps = source.to_dict(orient='records')
-    for app in apps:
-        if app['Method'] == 'create':
-            log(f'begin create process for app {app}')
-            createApp(app['AppName'], app['Region'],app['Space'], app['Team'], app['Storage'])
-        elif app['Method'] == 'update':
-            log(f'begin update process for app {app}')
-            updateApp(app['AppName'])
+RUN_SCRIPT = False
+if RUN_SCRIPT:
+    if __name__ == '__main__':
+        source = pd.read_csv('heroku_settings.csv', na_filter=False)
+        apps = source.to_dict(orient='records')
+        for app in apps:
+            if app['Method'] == 'create':
+                log(f'begin create process for app {app}')
+                create_app(app['AppName'], app['Region'],app['Space'], app['Team'], app['Storage'])
+            elif app['Method'] == 'update':
+                log(f'begin update process for app {app}')
+                update_app(app['AppName'])
+else:
+    print('running one time execution')
+    unset_configs('rick-demo')
+
