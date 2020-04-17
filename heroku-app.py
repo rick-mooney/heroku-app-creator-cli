@@ -156,6 +156,14 @@ def list_apps(team=None):
 def scale_dynos(app_name, dyno_type, amount=1):
     run(f'heroku ps:scale {dyno_type}={amount} -a {app_name}')
 
+def create_kibana(app_name, space, team, bonsai_url, version):
+    run(f'heroku login')
+    buildpack = 'https://github.com/omc/heroku-buildpack-kibana'
+    run(f'heroku create {app_name} --buildpack={buildpack} --space={space} --team={team}')
+    run(f'heroku config:set -a {app_name} ELASTICSEARCH_URL={bonsai_url} ELASTICSEARCH_VERSION={version}')
+    run(f'git push heroku master')
+
+
 def run(function):
     if DEBUG:
         print(f'running {function} ...')
@@ -182,7 +190,7 @@ def log(message):
         
 # Before running this script, you'll need to authenticate.
 # In the terminal run heroku login -i, then enter your username and password
-DEBUG = True
+DEBUG = False
 TRACE = 'FINE'
 RUN_SCRIPT = False
 if RUN_SCRIPT:
@@ -198,5 +206,5 @@ if RUN_SCRIPT:
                 update_app(app['AppName'])
 else:
     print('running one time execution')
-    unset_configs('rick-demo')
+
 
