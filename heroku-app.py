@@ -157,6 +157,11 @@ def scale_dynos(app_name, dyno_type, amount=1):
     run(f'heroku ps:scale {dyno_type}={amount} -a {app_name}')
 
 def create_kibana(app_name, space, team, bonsai_url, version):
+    if not bonsai_url.endswith(':443'):
+        ans = input('Warning: Your Bonsai URL does not include port 443 (most common).  Would you like us to append the default port? (Y / N): ')
+        if ans.lower() == 'y':
+            bonsai_url = bonsai_url + ':443'
+    run(f'git remote rm heroku')
     run(f'heroku login')
     buildpack = 'https://github.com/omc/heroku-buildpack-kibana'
     run(f'heroku create {app_name} --buildpack={buildpack} --space={space} --team={team}')
@@ -206,5 +211,5 @@ if RUN_SCRIPT:
                 update_app(app['AppName'])
 else:
     print('running one time execution')
-
+    # enter your code here for one off execution
 
