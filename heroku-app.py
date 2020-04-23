@@ -135,7 +135,7 @@ def install_addons(app_name):
     log('addons added to app')
 
 def create_app(app_name, region, space, team, storage):
-    create = run('heroku create {app_name} --remote=https://github.com/HardingPoint/grax-secure.git --region={region} --space={space} --team={team} --json')
+    create = run(f'heroku create {app_name} --remote=https://github.com/HardingPoint/grax-secure.git --region={region} --space={space} --team={team} --json')
     install_addons(app_name)
     set_configs(app_name, storage)
 
@@ -168,6 +168,14 @@ def create_kibana(app_name, space, team, bonsai_url, version):
     run(f'heroku config:set -a {app_name} ELASTICSEARCH_URL={bonsai_url} ELASTICSEARCH_VERSION={version}')
     run(f'git push heroku master')
 
+def create_switch_app(app_name, space=None, team=None):
+    os.chdir('sfswitch')
+    # run(f'git remote rm heroku')
+    run(f'heroku login')
+    run(f'heroku create {app_name}')
+    run(f'heroku addons:create heroku-postgresql:hobby-dev -a {app_name} --json')
+    # run(f'heroku addons:create scheduler:standard -a {app_name} --json')
+    run(f'git push heroku master')
 
 def run(function):
     if DEBUG:
@@ -212,4 +220,5 @@ if RUN_SCRIPT:
 else:
     print('running one time execution')
     # enter your code here for one off execution
+    create_switch_app('rmooney-grax-switch')
 
