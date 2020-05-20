@@ -1,8 +1,8 @@
 import os
-import pandas as pd
+# import pandas as pd
 import subprocess as proc
-from dotenv import load_dotenv
-load_dotenv()
+# from dotenv import load_dotenv
+# load_dotenv()
 
 CONFIGS = {}
 
@@ -229,6 +229,6 @@ else:
     #**** One Time Execution ****#
     print('running one time execution')
     # enter your code here for one off execution.  Here is an example creating a Kibana App
-    bonsai_url = 'https://your-kibana-url.net'
-    create_kibana('new-heroku-app-name', bonsai_url, 'bonsai-version', team='heroku-team-name', space='heroku-private-space-name')
+    bonsai_url = 'https://6nkt78aawe:p6fenk1dkr@rick-demo-3475521963.us-east-1.bonsaisearch.net'
+    create_kibana('grax-rmooney-dev-kibana-dev', bonsai_url, '6.6.2', team='grax-team', space='graxpri')
 
