@@ -156,26 +156,33 @@ def list_apps(team=None):
 def scale_dynos(app_name, dyno_type, amount=1):
     run(f'heroku ps:scale {dyno_type}={amount} -a {app_name}')
 
-def create_kibana(app_name, space, team, bonsai_url, version):
+def create_kibana(app_name, bonsai_url, version, space=None, team=None):
     if not bonsai_url.endswith(':443'):
         ans = input('Warning: Your Bonsai URL does not include port 443 (most common).  Would you like us to append the default port? (Y / N): ')
         if ans.lower() == 'y':
             bonsai_url = bonsai_url + ':443'
-    run(f'git remote rm heroku')
+    # run(f'git remote rm heroku')
     run(f'heroku login')
     buildpack = 'https://github.com/omc/heroku-buildpack-kibana'
-    run(f'heroku create {app_name} --buildpack={buildpack} --space={space} --team={team}')
+    if space is not None:
+        run(f'heroku create {app_name} --buildpack={buildpack} --team={team} --space={space}')
+    elif team is not None:
+        run(f'heroku create {app_name} --buildpack={buildpack} --team={team}')
+    else:
+        run(f'heroku create {app_name} --buildpack={buildpack}')
+
     run(f'heroku config:set -a {app_name} ELASTICSEARCH_URL={bonsai_url} ELASTICSEARCH_VERSION={version}')
+    run(f'heroku git:remote -a {app_name}')
     run(f'git push heroku master')
 
 def create_switch_app(app_name, space=None, team=None):
-    os.chdir('sfswitch')
     # run(f'git remote rm heroku')
     run(f'heroku login')
+    buildpack = 'https://github.com/rick-mooney/'
     run(f'heroku create {app_name}')
     run(f'heroku addons:create heroku-postgresql:hobby-dev -a {app_name} --json')
     # run(f'heroku addons:create scheduler:standard -a {app_name} --json')
-    run(f'git push heroku master')
+    run(f'git push heroku git@github.com:rick-mooney/grax-sfswitch.git')
 
 def run(function):
     if DEBUG:
@@ -201,11 +208,12 @@ def log(message):
     if TRACE == 'FINE':
         print(message)
         
-# Before running this script, you'll need to authenticate.
-# In the terminal run heroku login -i, then enter your username and password
+#**** Configurations ****#
 DEBUG = False
 TRACE = 'FINE'
-RUN_SCRIPT = False
+RUN_SCRIPT = False # set to False for One Time Execution
+
+#**** Bulk update or create heroku apps ****#
 if RUN_SCRIPT:
     if __name__ == '__main__':
         source = pd.read_csv('heroku_settings.csv', na_filter=False)
@@ -218,7 +226,9 @@ if RUN_SCRIPT:
                 log(f'begin update process for app {app}')
                 update_app(app['AppName'])
 else:
+    #**** One Time Execution ****#
     print('running one time execution')
-    # enter your code here for one off execution
-    create_switch_app('rmooney-grax-switch')
+    # enter your code here for one off execution.  Here is an example creating a Kibana App
+    bonsai_url = 'https://your-kibana-url.net'
+    create_kibana('new-heroku-app-name', bonsai_url, 'bonsai-version', team='heroku-team-name', space='heroku-private-space-name')
 
