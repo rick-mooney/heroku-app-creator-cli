@@ -1,8 +1,8 @@
 import os
-import pandas as pd
+# import pandas as pd
 import subprocess as proc
-from dotenv import load_dotenv
-load_dotenv()
+# from dotenv import load_dotenv
+# load_dotenv()
 
 CONFIGS = {}
 
@@ -135,7 +135,7 @@ def install_addons(app_name):
     log('addons added to app')
 
 def create_app(app_name, region, space, team, storage):
-    create = run(f'heroku create {app_name} --remote=https://github.com/HardingPoint/grax-secure.git --region={region} --space={space} --team={team} --json')
+    run(f'heroku create {app_name} --remote=https://github.com/HardingPoint/grax-secure.git --region={region} --space={space} --team={team} --json')
     install_addons(app_name)
     set_configs(app_name, storage)
 
@@ -207,6 +207,37 @@ def remote_update(team=None):
 def log(message):
     if TRACE == 'FINE':
         print(message)
+
+def bulk_setup(appname, region, key, secret, shield=False):
+    drain_url = 'syslog+tls://logs2.papertrailapp.com:39736'
+    run('heroku login')
+    run(f'heroku config:add -a {appname} AWS_ACCESS_KEY_ID={key} AWS_SECRET_ACCESS_KEY={secret} AWS_REGION={region} GRAX_FLAGS=xray SENTRY_URL=https://69e6c5227efd4b37a3592464b91c3798@o401886.ingest.sentry.io/5262138')
+    run(f'heroku labs:enable runtime-dyno-metadata -a {appname}')
+    run(f'heroku drains:add {drain_url} -a {appname}')
+    run(f'heroku drains -a {appname}')
+    log(f'please run heroku drains -a {appname} to get your papertrail id')
+    if not shield:
+        run(f'heroku run ./graxctl tm-index -a {appname}')
+    else:
+        log('WARNING: Shield environments cannot execute run commands without an ssh key. Please run the time machine index script in Kibana directly')
+    log('bulk setup complete')
+
+def query_db():
+    password = ''
+    endpoint = ''
+    port = ''
+    dbname = ''
+    print(f'psql postgres://postgres:{password}@{endpoint}:{port}/{dbname}')
+
+def kill_all_apps(app_list):
+    run('heroku login')
+    for app in app_list:
+        try:
+            scale_dynos(app, 'web', amount=0)
+            scale_dynos(app, 'grax-asynch', amount=0)
+        except Exception as ex:
+            print(f'failed to kill app {app}')
+            print(ex)
         
 #**** Configurations ****#
 DEBUG = False
@@ -226,9 +257,28 @@ if RUN_SCRIPT:
                 log(f'begin update process for app {app}')
                 update_app(app['AppName'])
 else:
+    apps = []
     #**** One Time Execution ****#
-    print('running one time execution')
+    # print('running one time execution')
     # enter your code here for one off execution.  Here is an example creating a Kibana App
-    bonsai_url = 'https://your-kibana-url.net'
-    create_kibana('new-heroku-app-name', bonsai_url, 'bonsai-version', team='heroku-team-name', space='heroku-private-space-name')
+    # bonsai_url = ''
+    # create_kibana('', 
+    #                 bonsai_url, '', 
+    #                 team='', 
+    #                 space=''
+    #             )
 
+    ## Bulk Setup ##
+    # appname = ''
+    # region = ''
+    # accessid = ''
+    # secretkey = ''
+    # shield = False
+    # bulk_setup(appname, region, accessid, secretkey, shield=shield)
+
+    ## Postgres Connection ##
+    # query_db()
+
+    ## Scale Down Apps
+    apps = []
+    kill_all_apps(apps)

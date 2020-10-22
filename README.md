@@ -18,11 +18,14 @@
 ## Scale apps
 
 ## Create Kibana
+1. Confirm configuration variables
 Set DEBUG = False <br>
 Set RUN_SCRIPT = False
+
+2. update kibana variables
 Add the following code in the "One Time Execution" section of the heroku-app.py script and update the variables for your app
 
     bonsai_url = 'https://your-kibana-url.net'
     create_kibana('new-heroku-app-name', bonsai_url, 'bonsai-version', team='heroku-team-name', space='heroku-private-space-name')
 
-In a new terminal, run python heroku-app.py
+3. In a new terminal, run python heroku-app.py
